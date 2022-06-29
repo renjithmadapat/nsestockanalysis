@@ -87,11 +87,10 @@ def data_download():
     data_df['timeXvalue'] = data_df['timestamp'].apply(lambda x: x.strftime('%H:%M'))
 
     data_df.to_sql('optiontable',con=db.engine,if_exists='replace', index= False)
-    # data_df.to_csv('option_data.csv')
+
 
 #---get the option data saved and read it to data frame for further processing
 def get_option_data():
-    # data_df = pd.read_csv('option_data.csv')
     data_df = pd.read_sql_table('optiontable',con=db.engine)
     return data_df
 
@@ -146,7 +145,7 @@ app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # server = app.server
 
 # app.server.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:Reset123@localhost/nsestockanalyzer"
-app.server.config["SQLALCHEMY_DATABASE_URI"] = 'postgres://zcjtcfrrdapwih:316c74f2f7bc53c8b49ad004019f1f986115194bfb3461e9bed027fd0e27679a@ec2-44-195-162-77.compute-1.amazonaws.com:5432/dfle9mim2rbbgf'
+app.server.config["SQLALCHEMY_DATABASE_URI"] = "postgres://zcjtcfrrdapwih:316c74f2f7bc53c8b49ad004019f1f986115194bfb3461e9bed027fd0e27679a@ec2-44-195-162-77.compute-1.amazonaws.com:5432/dfle9mim2rbbgf"
 db = SQLAlchemy(app.server)
 
 #---sort the filter dropdown values----
