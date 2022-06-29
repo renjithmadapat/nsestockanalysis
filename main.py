@@ -1,12 +1,14 @@
 import pandas as pd
+import datetime
+from datetime import date,datetime
 import requests
 import plotly.express as px
 import plotly.graph_objects as go
 import dash
 from dash import dcc, html,callback_context
 from dash.dependencies import Input,Output
-import datetime
-from datetime import date,datetime
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
 
 #---refreshing from NSE.com
 #---extract data from NSE Option Chain---
@@ -77,17 +79,20 @@ def data_download():
         for i,dataval in enumerate(rawop[loop_val]):
             if dataval !=0:
                 dataval.update({'Type':loop_val})
-                data_df = data_df.append(dataval,ignore_index=True)
+                data_df = data_df.append(dataval, ignore_index=True)
             else:
                 dataval_zero.update({'strikePrice':rawop['strikePrice'][i],'expiryDate':rawop['expiryDate'][i],'Type':loop_val})
                 data_df = data_df.append(dataval_zero,ignore_index=True)
     data_df['timestamp'] = datetime.now()
     data_df['timeXvalue'] = data_df['timestamp'].apply(lambda x: x.strftime('%H:%M'))
-    data_df.to_csv('option_data.csv',index=False)
+
+    data_df.to_sql('optiontable',con=db.engine,if_exists='replace', index= False)
+    # data_df.to_csv('option_data.csv')
 
 #---get the option data saved and read it to data frame for further processing
 def get_option_data():
-    data_df = pd.read_csv('option_data.csv')
+    # data_df = pd.read_csv('option_data.csv')
+    data_df = pd.read_sql_table('optiontable',con=db.engine)
     return data_df
 
 
@@ -119,7 +124,8 @@ def chart_data(data_frame,expiry):
     exp_date = expiry
     spot_price = data_df[data_df['underlyingValue']>0]['underlyingValue'].iloc[0]
     refresh_time = data_df['timeXvalue'].iloc[0]
-    refresh_test = datetime.strptime(data_df['timestamp'].iloc[0], "%Y-%m-%d %H:%M:%S.%f")
+    time_selection = str(data_df['timestamp'].iloc[0])
+    refresh_test = datetime.strptime(time_selection, "%Y-%m-%d %H:%M:%S.%f")
     refresh_date = refresh_test.strftime('%d-%b-%Y time:%H:%M')
     itm_strike = get_itm(spot_price)
     chart_range = 1500
@@ -134,8 +140,14 @@ def chart_data(data_frame,expiry):
     chart_df = ce_df.join(pe_df,lsuffix='-CE',rsuffix='-PE')
     return chart_df, spot_price, refresh_time,itm_strike,refresh_date
 
-app = dash.Dash(__name__)
-server = app.server
+server = Flask(__name__)
+app = dash.Dash(__name__,server=server,suppress_callback_exceptions=True)
+app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# server = app.server
+
+# app.server.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:Reset123@localhost/nsestockanalyzer"
+app.server.config["SQLALCHEMY_DATABASE_URI"] = 'postgres://zcjtcfrrdapwih:316c74f2f7bc53c8b49ad004019f1f986115194bfb3461e9bed027fd0e27679a@ec2-44-195-162-77.compute-1.amazonaws.com:5432/dfle9mim2rbbgf'
+db = SQLAlchemy(app.server)
 
 #---sort the filter dropdown values----
 data_df = get_option_data()
